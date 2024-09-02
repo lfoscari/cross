@@ -6,7 +6,7 @@ import numpy as np
 
 INPUT_WORDS_FILE = "./words/glove.6B.50d.txt"
 
-OUTPUT_WORDS_FILE = "./words/words_unicode.txt"
+OUTPUT_WORDS_FILE = "./words/words_unicode.pickle"
 OUTPUT_VECTORS_FILE = "./words/words_vectors.npy"
 
 def is_valid(word: str):
