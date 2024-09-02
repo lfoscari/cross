@@ -1,5 +1,5 @@
 import numpy as np
-from numpy._typing import NDArray
+from copy import deepcopy
 
 # 1. Define a crossword structure
 # 2. Get a bag of words
@@ -8,6 +8,7 @@ from numpy._typing import NDArray
 H, V = "→", "↓"
 W, B = "_", "█"
 GRID = np.array([
+    [B, W, B, W, B],
     [W, W, W, W, B],
     [W, W, W, B, W],
     [W, W, B, W, W],
@@ -29,18 +30,39 @@ WORDS = [
 def get_word_candidates(length: int, intersecting = [], similar = []):
     return WORDS[length - 2]
 
+def print_grid(grid):
+    for line in grid: print(" ".join(line))
+
+def insert_word(grid, hook, word):
+    (direction, x, y, lenght) = hook
+
+    if lenght != len(word):
+        raise ValueError(f"Mismatch between word lenght and slot size: {len(word)} (word) != {lenght} (slot)!")
+
+    if direction == V:
+        grid = grid.T
+        x, y = y, x
+
+    grid[x][y:y+lenght] = list(word)
+    return grid.T if direction == V else grid
+
 def find_line_hooks(line):
+    # Insert black square at the beginning and end of the line
     line = np.insert(line, [0, len(line)], [B, B])
+    # Isolate black squares
     blacks = np.where(line == B)[0]
-    interval_lenths = np.diff(blacks)
-    return list(blacks[np.where(interval_lenths > 2)[0]])
+    # Consider only the gaps between black square of length at least 2
+    interval_lenghts = np.diff(blacks)
+    minimum_lenght = np.where(interval_lenghts > 2)
+    # Return these gaps and their respective lenghts
+    return zip(blacks[minimum_lenght[0]], interval_lenghts[minimum_lenght] - 1)
 
 def find_hooks(grid):
-    horizontal = [find_line_hooks(line) for line in grid]
-    vertical = [find_line_hooks(line) for line in grid.T]
+    horizontal = [(row, find_line_hooks(line)) for row, line in enumerate(grid)]
+    vertical = [(col, find_line_hooks(line)) for col, line in enumerate(grid.T)]
 
-    return [(H, i, h) for i, p in enumerate(horizontal) for h in p] + \
-        [(V, v, j) for j, p in enumerate(vertical) for v in p]
+    return [(H, row, col, len) for row, value in horizontal for (col, len) in value] + \
+        [(V, row, col, len) for col, value in vertical for (row, len) in value]
 
 def solve_crossword(hooks, grid, bow):
     # todo: order hooks by length (longest to shortest)
@@ -55,7 +77,8 @@ def solve_crossword(hooks, grid, bow):
 
         for word in words:
             grid_copy = np.copy(grid)
-            # insert word in hook a change grid_copy
+            grid_copy = insert_word(grid_copy, hook, word)
+
             remaining_hooks = hooks[index + 1:]
             if solve_crossword(remaining_hooks, grid_copy, bow):
                 return True
@@ -65,11 +88,14 @@ def solve_crossword(hooks, grid, bow):
 
 
 def main():
-    hooks = find_hooks(GRID)
-    print(hooks)
+    grid = deepcopy(GRID)
 
-    for line in GRID:
-        print(" ".join(line))
+    hooks = find_hooks(grid)
+    hook = hooks[-1]
+    grid = insert_word(grid, hook, "ciao")
+
+    print(hook)
+    print_grid(grid)
 
     # solve_crossword(GRID, 0, 0)
 
