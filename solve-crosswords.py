@@ -1,5 +1,4 @@
 import numpy as np
-from copy import deepcopy
 
 # 1. Define a crossword structure
 # 2. Get a bag of words
@@ -30,7 +29,7 @@ WORDS = [
     ], [
         "aab", "aba", "abb", "baa", "bab", "bba", "bbb"
     ], [
-        "aaab", "aaba", "aabb", "abaa", "abab", "abba", "abbb",
+        "aaaa", "aaab", "aaba", "aabb", "abaa", "abab", "abba", "abbb",
         "baaa", "baab", "baba", "babb", "bbaa", "bbab", "bbba", "bbbb"
     ]
 ]
@@ -38,6 +37,7 @@ WORDS = [
 
 def get_word_candidates(bow, length: int, intersecting = [], similar = []):
     return bow[length - 2]
+
 
 def exclude_word(bow, word):
     bow[len(word) - 2].remove(word)
@@ -90,15 +90,16 @@ def find_hooks(grid):
     horizontal = [(row, find_line_hooks(line)) for row, line in enumerate(grid)]
     vertical = [(col, find_line_hooks(line)) for col, line in enumerate(grid.T)]
 
-    return [(H, row, col, len) for row, value in horizontal for (col, len) in value] + \
+    hooks = [(H, row, col, len) for row, value in horizontal for (col, len) in value] + \
         [(V, row, col, len) for col, value in vertical for (row, len) in value]
+
+    # For efficiency reasons, sort them be length
+    return sorted(hooks, key=lambda hook: hook[3], reverse=True)
 
 
 # ---- SOLVER ----
 
 def solve_crossword(hooks, grid, bow):
-    # todo: order hooks by length (longest to shortest)
-
     if hooks == []:
         return True
 
@@ -125,14 +126,13 @@ def solve_crossword(hooks, grid, bow):
 
 
 def main():
-    grid = deepcopy(GRID)
-    hooks = find_hooks(grid)
+    hooks = find_hooks(GRID)
+    completed = solve_crossword(hooks, GRID, WORDS)
 
-    completed = solve_crossword(hooks, grid, WORDS)
     if not completed:
         print("Could not complete... sorry")
     else:
-        print_grid(grid)
+        print_grid(GRID)
 
 
 if __name__ == "__main__":
