@@ -105,7 +105,7 @@ def solve_crossword(hooks, grid, bow):
 
     for index, hook in enumerate(hooks):
         # find words of the right length for hook from bow
-        # optionally filter for letters in the intersecting words
+        # optionally filter for letters in the intersecting words
 
         (_, _, _, length) = hook
         words = get_word_candidates(bow, length)

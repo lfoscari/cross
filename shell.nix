@@ -2,8 +2,8 @@ with import <nixpkgs> {};
 
 pkgs.mkShell {
     buildInputs = with pkgs; [
-        python3Packages.numpy
-        python312Packages.python-lsp-server
-        python3
+        python312Packages.numpy
+        python312Packages.nltk
+        python312
     ];
 }
