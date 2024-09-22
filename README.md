@@ -1,3 +1,6 @@
 Crossword puzzles without definitions but based on the semantic similarity of the intersecting words.
 
-Using the vectore representation from https://github.com/stanfordnlp/GloVe.
+Next steps:
+- Fix a corpus of high quality words (optionally with descriptions)
+- Write a crossword generator with high dimensions (bigger crosswords are easier)
+- Enjoy
