@@ -1,82 +1,18 @@
 import numpy as np
-import sqlite3
+import gensim.downloader as api
+
+SIMILAR_WORDS_AMOUNT=1_000
+
+# https://github.com/piskvorky/gensim-data?tab=readme-ov-file#models
+# MODEL = api.load("glove-twitter-25")
+MODEL = api.load("word2vec-google-news-300")
+MODEL.sort_by_descending_frequency()
 
 
-DATABASE = "./words/itwac128.sqlite"
+def get_similar(prompt_words, model = MODEL):
+    similar_words = model.most_similar(prompt_words, topn=SIMILAR_WORDS_AMOUNT)
+    return [word for (word, _) in similar_words]
 
-database_words = []
-database_vectors = np.array([])
-
-
-def is_valid(word):
-    return word.isalpha() and word.islower() and len(word) > 2
-
-
-def cleanup_words():
-    global database_words
-    global database_vectors
-
-    exclude = [i for i, w in enumerate(database_words) if not is_valid(w)]
-
-    database_words = np.delete(database_words, exclude, axis=0)
-    database_vectors = np.delete(database_vectors, exclude, axis=0)
-
-
-def load_words():
-    global database_words
-    global database_vectors
-
-    connection = sqlite3.connect(DATABASE)
-
-    cursor = connection.cursor()
-    dump = cursor.execute("select * from store where ranking < 100000")
-
-    database_words, database_vectors = zip(*[(l[0], np.array(l[1:-1])) for l in dump])
-
-    database_words = np.array(database_words)
-    database_vectors = np.stack(database_vectors)
-
-    cleanup_words()
-
-
-def get_similar(words):
-    # Get the word which is the closest to the given words
-    # TODO: this could be GREATLY optimized
-
-    indices = get_indices(words)
-    word_vectors = database_vectors[indices]
-
-    if word_vectors.size == 0:
-        raise ValueError(f"Could not find words {words}")
-
-    mean = sum(word_vectors) / len(word_vectors)
-
-    distances = np.linalg.norm(database_vectors - mean, axis=1)
-    distances[indices] = np.nan
-
-    sorting = np.argsort(distances)
-    return database_words[sorting]
-
-
-def get_indices(words):
-    return np.where(np.isin(database_words, words))
-    
-
-def main():
-    load_words()
-
-    # for _ in range(10):
-        # random_indices = np.random.choice(len(database_words), 5)
-        # random_words = [database_words[i] for i in random_indices]
-
-        # closest_word, _ = get_similar(random_indices)
-        # print("The word closest to", random_words, "is", closest_word)
-
-    words = ["frutta"]
-    # indices = np.where(np.isin(database_words, words))
-
-    closest_words = get_similar(words)
-    print("The word closest to", words, "is", closest_words[0])
 
 if __name__ == "__main__":
-    main()
+    print(get_similar(["animal", "cat", "dog", "bird"]))

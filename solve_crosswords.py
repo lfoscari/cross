@@ -2,7 +2,9 @@ import numpy as np
 import word_similarity
 
 MIN_WORD_LENGTH = 3
-TOPIC = ["fruit"]
+
+# Repeating the topic words improves locality?
+TOPIC = ["pet"] # * 3
 
 H, V = "→", "↓"
 W, B = "_", "█"
@@ -24,11 +26,21 @@ def print_grid(grid):
 
 word_filter = []
 
-def get_word_candidates(intersecting, length):
-    similar_words = word_similarity.get_similar(TOPIC + intersecting)
-    indices_closest = np.where(np.char.str_len(similar_words) == length)
+def get_word_candidates(intersecting_points, length):
+    intersecting_words = [word for (_, word, _) in intersecting_points]
+    similar_words = word_similarity.get_similar(TOPIC + intersecting_words)
 
-    return [word for word in similar_words[indices_closest] if word not in word_filter]
+    return [word for word in similar_words if is_valid(word, length, intersecting_points)]
+
+def is_valid(word, length, intersecting_points):
+    if len(word) != length or word in word_filter: return False
+
+    # Check that the proposed word fits the grid with the intersection points
+    for (index, int_word, int_index) in intersecting_points:
+        if word[index] != int_word[int_index]: return False
+
+    return True
+    
 
 def exclude_word(word):
     global word_filter
@@ -90,8 +102,10 @@ def find_intersecting(grid, hook):
             int_i, int_j = (int_i, int_j + 1) if int_direction == H else (int_i + 1, int_j)
 
         # Ensure that the intersecting word is complete by checking that ends with a black square
-        if (int_i >= len(GRID) or int_j >= len(GRID[0]) or grid[int_i][int_j] == B) and len(int_word) > 1:
-            int_words.append(int_word)
+        if (int_i >= len(GRID) or int_j >= len(GRID[0]) or grid[int_i][int_j] == B) and len(int_word) >= MIN_WORD_LENGTH:
+            # Store the index at which the intersecting word intersects 
+            int_word_index = j - int_j if int_direction == H else i - int_i
+            int_words.append((l, int_word, int_word_index))
 
     return int_words
 
@@ -130,8 +144,8 @@ def solve_crossword(hooks, grid):
     for index, hook in enumerate(hooks):
         (_, _, _, length) = hook
 
-        intersecting_words = find_intersecting(grid, hook)
-        words = get_word_candidates(intersecting_words, length)
+        intersecting_points = find_intersecting(grid, hook)
+        words = get_word_candidates(intersecting_points, length)
 
         for word in words:
             fits, insertions = insert_word(grid, hook, word)
@@ -149,8 +163,6 @@ def solve_crossword(hooks, grid):
 
 
 def main():
-    word_similarity.load_words()
-    
     hooks = find_hooks(GRID)
     completed = solve_crossword(hooks, GRID)
 
