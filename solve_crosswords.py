@@ -35,7 +35,7 @@ WORDS = [
 ]
 
 
-def get_word_candidates(bow, length: int, intersecting = [], similar = []):
+def get_word_candidates(bow, length: int, intersecting = []):
     return bow[length - 2]
 
 
@@ -70,6 +70,38 @@ def insert_word(grid, hook, word):
             return False, []
 
     return True, insertions
+
+
+def find_intersecting(grid, hook):
+    # Find words that intersect the slot denoted by the given hook
+    (direction, x, y, length) = hook
+    
+    # the intersecting word is orthogonal
+    int_direction = H if direction == V else V
+    int_words = []
+
+    for l in range(length):
+        i, j = (x, y + l) if direction == H else (x + l, y)
+
+        if grid[i][j] not in [W, B]:
+            # Search the intersecting word by backtracking to its start
+            int_i, int_j = i, j
+            while int_i > 0 and int_j > 0 and grid[int_i][int_j] not in [W, B]:
+                int_i, int_j = (int_i, int_j - 1) if int_direction == H else (int_i - 1, int_j)
+            
+            # Now read the whole word
+            int_word = ""
+            int_length = 0
+            while grid[int_i][int_j] not in [W, B]:
+                int_word += grid[int_i][int_j]
+                int_i, int_j = (int_i, int_j + 1) if int_direction == H else (int_i + 1, int_j)
+                int_length += 1
+
+            # Ensure that the intersecting word is complete by checking that ends with a black square
+            if grid[int_i][int_j] == B and int_length > 2:
+                int_words.append(int_word)
+
+    return int_words
 
 
 # ---- HOOKS ----
@@ -108,13 +140,15 @@ def solve_crossword(hooks, grid, bow):
         # optionally filter for letters in the intersecting words
 
         (_, _, _, length) = hook
-        words = get_word_candidates(bow, length)
+
+        intersecting_words = find_intersecting(grid, hook)
+        words = get_word_candidates(bow, length, intersecting_words)
 
         for word in words:
             fits, insertions = insert_word(grid, hook, word)
             if not fits: continue
             
-            exclude_word(bow, word)
+            # exclude_word(bow, word)
 
             remaining_hooks = hooks[index + 1:]
             if solve_crossword(remaining_hooks, grid, bow):
