@@ -5,4 +5,4 @@ Next steps:
 - Write a crossword generator with high dimensions (bigger crosswords are easier)
 - Enjoy
 
-Currently experimenting with the word embeddings from http://www.italianlp.it/download-itwac-word-embeddings/.
+Currently experimenting with the word embedding database [Gigaword 5th edition](http://vectors.nlpl.eu/repository/20/4.zip) with 314815 lemmatized words.

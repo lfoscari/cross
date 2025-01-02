@@ -1,19 +1,18 @@
 import numpy as np
+import word_similarity
 
-# 1. Define a crossword structure
-# 2. Get a bag of words
-# 3. Solve the crossword by filling it with the bag of words
+MIN_WORD_LENGTH = 3
+TOPIC = ["fruit"]
 
 H, V = "→", "↓"
 W, B = "_", "█"
 
 GRID = np.array([
-    [B, W, B, W, B],
-    [W, W, W, W, B],
     [W, W, W, B, W],
-    [W, W, B, W, W],
-    [W, B, W, W, W],
     [B, W, W, W, W],
+    [W, W, B, W, W],
+    [W, W, W, W, B],
+    [W, B, W, W, W],
 ])
 
 
@@ -23,24 +22,17 @@ def print_grid(grid):
 
 # ---- WORDS ----
 
-WORDS = [
-    [
-        "aa", "ab", "ba", "bb"
-    ], [
-        "aab", "aba", "abb", "baa", "bab", "bba", "bbb"
-    ], [
-        "aaaa", "aaab", "aaba", "aabb", "abaa", "abab", "abba", "abbb",
-        "baaa", "baab", "baba", "babb", "bbaa", "bbab", "bbba", "bbbb"
-    ]
-]
+word_filter = []
 
+def get_word_candidates(intersecting, length):
+    similar_words = word_similarity.get_similar(TOPIC + intersecting)
+    indices_closest = np.where(np.char.str_len(similar_words) == length)
 
-def get_word_candidates(bow, length: int, intersecting = []):
-    return bow[length - 2]
+    return [word for word in similar_words[indices_closest] if word not in word_filter]
 
-
-def exclude_word(bow, word):
-    bow[len(word) - 2].remove(word)
+def exclude_word(word):
+    global word_filter
+    word_filter.append(word)
 
 
 # ---- WORD INSERTION AND DELETION ----
@@ -54,9 +46,9 @@ def insert_word(grid, hook, word):
     # Return True if managed to insert the word, signaling where changes were made.
     
     (direction, x, y, length) = hook
-    if length != len(word): return False
-
     insertions = []
+    
+    if length != len(word): return False, insertions
 
     for l in range(length):
         i, j = (x, y + l) if direction == H else (x + l, y)
@@ -73,6 +65,8 @@ def insert_word(grid, hook, word):
 
 
 def find_intersecting(grid, hook):
+    # TODO: rewrite using numpy arrays
+
     # Find words that intersect the slot denoted by the given hook
     (direction, x, y, length) = hook
     
@@ -82,24 +76,22 @@ def find_intersecting(grid, hook):
 
     for l in range(length):
         i, j = (x, y + l) if direction == H else (x + l, y)
+        if grid[i][j] in [W, B]: break
+        
+        # Search the intersecting word by backtracking to its start
+        int_i, int_j = i, j
+        while int_i > 0 and int_j > 0 and grid[int_i][int_j] not in [W, B]:
+            int_i, int_j = (int_i, int_j - 1) if int_direction == H else (int_i - 1, int_j)
+        
+        # Now read the whole word
+        int_word = ""
+        while int_i < len(GRID) and int_j < len(GRID[0]) and grid[int_i][int_j] not in [W, B]:
+            int_word += grid[int_i][int_j]
+            int_i, int_j = (int_i, int_j + 1) if int_direction == H else (int_i + 1, int_j)
 
-        if grid[i][j] not in [W, B]:
-            # Search the intersecting word by backtracking to its start
-            int_i, int_j = i, j
-            while int_i > 0 and int_j > 0 and grid[int_i][int_j] not in [W, B]:
-                int_i, int_j = (int_i, int_j - 1) if int_direction == H else (int_i - 1, int_j)
-            
-            # Now read the whole word
-            int_word = ""
-            int_length = 0
-            while grid[int_i][int_j] not in [W, B]:
-                int_word += grid[int_i][int_j]
-                int_i, int_j = (int_i, int_j + 1) if int_direction == H else (int_i + 1, int_j)
-                int_length += 1
-
-            # Ensure that the intersecting word is complete by checking that ends with a black square
-            if grid[int_i][int_j] == B and int_length > 2:
-                int_words.append(int_word)
+        # Ensure that the intersecting word is complete by checking that ends with a black square
+        if (int_i >= len(GRID) or int_j >= len(GRID[0]) or grid[int_i][int_j] == B) and len(int_word) > 1:
+            int_words.append(int_word)
 
     return int_words
 
@@ -112,10 +104,10 @@ def find_line_hooks(line):
     # Isolate black squares
     blacks = np.where(line == B)[0]
     # Consider only the gaps between black square of length at least 2
-    interval_lenghts = np.diff(blacks)
-    minimum_lenght = np.where(interval_lenghts > 2)
-    # Return these gaps and their respective lenghts
-    return zip(blacks[minimum_lenght[0]], interval_lenghts[minimum_lenght] - 1)
+    interval_lengths = np.diff(blacks)
+    minimum_length = np.where(interval_lengths > MIN_WORD_LENGTH)
+    # Return these gaps and their respective lengths
+    return zip(blacks[minimum_length[0]], interval_lengths[minimum_length] - 1)
 
 
 def find_hooks(grid):
@@ -131,27 +123,24 @@ def find_hooks(grid):
 
 # ---- SOLVER ----
 
-def solve_crossword(hooks, grid, bow):
+def solve_crossword(hooks, grid):
     if hooks == []:
         return True
 
     for index, hook in enumerate(hooks):
-        # find words of the right length for hook from bow
-        # optionally filter for letters in the intersecting words
-
         (_, _, _, length) = hook
 
         intersecting_words = find_intersecting(grid, hook)
-        words = get_word_candidates(bow, length, intersecting_words)
+        words = get_word_candidates(intersecting_words, length)
 
         for word in words:
             fits, insertions = insert_word(grid, hook, word)
             if not fits: continue
             
-            # exclude_word(bow, word)
+            exclude_word(word)
 
             remaining_hooks = hooks[index + 1:]
-            if solve_crossword(remaining_hooks, grid, bow):
+            if solve_crossword(remaining_hooks, grid):
                 return True
 
             remove_word(grid, insertions)
@@ -160,8 +149,10 @@ def solve_crossword(hooks, grid, bow):
 
 
 def main():
+    word_similarity.load_words()
+    
     hooks = find_hooks(GRID)
-    completed = solve_crossword(hooks, GRID, WORDS)
+    completed = solve_crossword(hooks, GRID)
 
     if not completed:
         print("Could not complete... sorry")

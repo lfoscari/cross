@@ -39,37 +39,44 @@ def load_words():
     cleanup_words()
 
 
-def get_similar(indices):
-    # Get the word which is the closest to the given words indices
-    # This could be GREATLY optimized
+def get_similar(words):
+    # Get the word which is the closest to the given words
+    # TODO: this could be GREATLY optimized
 
-    # words = [database_words[i] for i in indices]
-
+    indices = get_indices(words)
     word_vectors = database_vectors[indices]
+
+    if word_vectors.size == 0:
+        raise ValueError(f"Could not find words {words}")
+
     mean = sum(word_vectors) / len(word_vectors)
 
     distances = np.linalg.norm(database_vectors - mean, axis=1)
     distances[indices] = np.nan
 
-    closest = np.nanargmin(distances)
-    return database_words[closest], database_vectors[closest]
+    sorting = np.argsort(distances)
+    return database_words[sorting]
 
+
+def get_indices(words):
+    return np.where(np.isin(database_words, words))
+    
 
 def main():
     load_words()
 
-    for _ in range(10):
-        random_indices = np.random.choice(len(database_words), 5)
-        random_words = [database_words[i] for i in random_indices]
+    # for _ in range(10):
+        # random_indices = np.random.choice(len(database_words), 5)
+        # random_words = [database_words[i] for i in random_indices]
 
-        closest_word, _ = get_similar(random_indices)
-        print("The word closest to", random_words, "is", closest_word)
+        # closest_word, _ = get_similar(random_indices)
+        # print("The word closest to", random_words, "is", closest_word)
 
-    words = ["sedia", "cena", "scrivania"]
-    indices = np.where(np.isin(database_words, words))
+    words = ["frutta"]
+    # indices = np.where(np.isin(database_words, words))
 
-    closest_word, _ = get_similar(indices)
-    print("The word closest to", words, "is", closest_word)
+    closest_words = get_similar(words)
+    print("The word closest to", words, "is", closest_words[0])
 
 if __name__ == "__main__":
     main()
