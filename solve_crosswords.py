@@ -4,7 +4,7 @@ import word_similarity
 MIN_WORD_LENGTH = 3
 
 # Repeating the topic words improves locality?
-TOPIC = ["pet"] # * 3
+TOPIC = ["pet"] * 3
 
 H, V = "→", "↓"
 W, B = "_", "█"
